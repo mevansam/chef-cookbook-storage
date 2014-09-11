@@ -42,10 +42,11 @@ class Chef
 
                 @uuid = nil
                 @type = "nfs"
+                @default = false
                 @shared = true
                 @nfs_server = nil
                 @nfs_path = nil
-                @other_config = nil
+                @other_config = { }
             end
 
             def uuid(arg=nil)
@@ -54,6 +55,10 @@ class Chef
 
             def type(arg=nil)
                 set_or_return(:type, arg, :kind_of => String)
+            end
+
+            def default(arg=nil)
+                set_or_return(:default, arg, :kind_of => [TrueClass, FalseClass])
             end
 
             def shared(arg=nil)
@@ -69,7 +74,7 @@ class Chef
             end
 
             def other_config(arg=nil)
-                set_or_return(:other_config, arg, :kind_of => String)
+                set_or_return(:other_config, arg, :kind_of => Hash)
             end
         end
 

@@ -19,6 +19,7 @@ class Chef
 
                     @current_resource.uuid(new_resource.uuid)
                     @current_resource.type(new_resource.type)
+                    @current_resource.default(new_resource.default)
                     @current_resource.shared(new_resource.shared)
                     @current_resource.nfs_server(new_resource.nfs_server)
                     @current_resource.nfs_path(new_resource.nfs_path)
@@ -30,10 +31,7 @@ class Chef
                 def action_create
 
                     if exists?
-
-                        # SR exists but name is not set so set it
-                        shell!("xe sr-param-set uuid=\"#{@current_resource.uuid}\" " + 
-                            "name-label=\"#{@current_resource.name}\"") if !@name_is_set
+                        shell!("xe sr-param-set uuid=\"#{@current_resource.uuid}\" name-label=\"#{@current_resource.name}\"") if !@name_is_set
                     else 
 
                         if (!@current_resource.uuid.nil? && !@current_resource.uuid.empty?) || @current_resource.type=="iso"
@@ -42,8 +40,9 @@ class Chef
                             # Create new default shared SR
                             @current_resource.uuid( shell( "xe sr-create name-label=\"#{@current_resource.name}\" " + 
                                 "content-type=\"user\" type=\"#{@current_resource.type}\" " + 
-                                "shared=#{@current_resource.shared} #{device_config_options} " + 
-                                "#{@current_resource.other_config}" ) )
+                                "shared=#{@current_resource.shared} #{device_config_options}" ) )
+
+                            common_config
 
                             Chef::Log.debug("Created SR with uuid '#{@current_resource.uuid}'.")
                         end
@@ -57,8 +56,9 @@ class Chef
 
                 def action_attach
 
-                    if !exists?
-
+                    if exists?
+                        shell!("xe sr-param-set uuid=\"#{@current_resource.uuid}\" name-label=\"#{@current_resource.name}\"") if !@name_is_set
+                    else 
                         content_type = "user"
 
                         case @current_resource.type
@@ -86,11 +86,23 @@ class Chef
                         shell!("xe pbd-plug uuid=#{pbd_uuid}")
                         shell!("xe sr-scan uuid=#{@current_resource.uuid}")
 
+                        common_config
+
                         new_resource.updated_by_last_action(true)
                     end
 
                     node.set["xenserver"]["storage"][@current_resource.type]["uuid"] = @current_resource.uuid
                     node.save
+                end
+
+                def common_config
+
+                    shell!("xe sr-param-set uuid=\"#{@current_resource.uuid}\" #{other_config_options}")
+                
+                    if @current_resource.default
+                        pool_uuid = shell("xe pool-list --minimal")
+                        shell!("xe pool-param-set uuid=#{pool_uuid} default-SR=#{@current_resource.uuid}")
+                    end
                 end
 
                 def action_detach
@@ -177,6 +189,21 @@ class Chef
                         end
                     end
                     return ""
+                end
+
+                def other_config_options
+
+                    other_config_options = ""
+                    sr_other_config = { }
+
+                    if !@current_resource.uuid.nil? && !@current_resource.uuid.empty?
+
+                        sr_other_config = Hash[ shell("xe sr-list uuid=#{@current_resource.uuid} params=other-config --minimal")
+                            .split(";").map { |kv| kv.strip.split(":").collect { |v| v.strip } } ]
+                    end
+
+                    return ((@current_resource.other_config.select { |k,v| sr_other_config[k] != v })\
+                        .each_pair.collect { |k,v| "other-config:#{k}=#{v}" }).join(" ")
                 end
 
             end
