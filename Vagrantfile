@@ -13,26 +13,26 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.hostname = "storage-berkshelf"
 
-  # Configure proxy
-  config.proxy.http     = "http://http.proxy.fmr.com:8000"
-  config.proxy.https    = "http://http.proxy.fmr.com:8000"
-  config.proxy.no_proxy = "localhost,127.0.0.1,*.fmr.com"
+  # Configure proxy - requires vagrant-proxyconf plugin
+  #config.proxy.http     = "http://http.proxy.com:8888"
+  #config.proxy.https    = "http://http.proxy.com:8888"
+  #config.proxy.no_proxy = "localhost,127.0.0.1,*.mevansam.org"
 
   # Set the version of chef to install using the vagrant-omnibus plugin
   config.omnibus.chef_version = :latest
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "duffy/xenserver"
-  
+  config.vm.box = "chef/ubuntu-14.04"
+
   # The url from where the 'config.vm.box' box will be fetched if it
   # doesn't already exist on the user's system.
-  config.vm.box_url = "https://vagrantcloud.com/duffy/xenserver/version/2/provider/virtualbox.box"
-  
+  config.vm.box_url = "https://vagrantcloud.com/chef/boxes/ubuntu-14.04"
+
   # Assign this VM to a host-only network IP, allowing you to access it
   # via the IP. Host-only networks can talk to the host machine as well as
   # any other machines on the same network, but cannot be accessed (through this
   # network interface) by any external networks.
-  config.vm.network :private_network, :auto_config => false , :ip => "192.168.56.10"
+  config.vm.network :private_network, ip: "192.168.50.103"
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
@@ -74,19 +74,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # to skip installing and copying to Vagrant's shelf.
   # config.berkshelf.except = []
 
-  #config.vm.provision :chef_client do |chef|
-  #
-  #  chef.arguments = "-l debug"
-  #  chef.chef_server_url = "https://c2c-oschef-mmk1.fmr.com"
-  #  chef.validation_key_path = "../../../.chef/chef-validator.pem"
-  #  chef.validation_client_name = "chef-validator"
-  #  chef.node_name = "a292082_storage_dev"
-  #
-  #  chef.json = {
-  #  }
-  #
-  #  chef.run_list = [
-  #      "recipe[storage::test]"
-  #  ]
-  #end
+  config.vm.provision :chef_client do |chef|
+
+    chef.arguments = "-l info"
+    chef.chef_server_url = "http://192.168.50.1:9999"
+    chef.validation_key_path = "./.chef/chef-zero_validator.pem"
+    chef.validation_client_name = "chef-zero_validator"
+    chef.node_name = "storage-test-client"
+
+    chef.json = {
+    }
+
+    chef.run_list = [
+         "recipe[storage::test]"
+    ]
+  end
 end
